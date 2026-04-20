@@ -26,14 +26,24 @@ jobs:
           cache: maven
           cache-dependency-path: stu_backend/pom.xml
 
+      - name: Validate SonarQube secrets
+        run: |
+          test -n "${{ secrets.SONAR_HOST_URL }}" || (echo "Missing SONAR_HOST_URL secret" && exit 1)
+          test -n "${{ secrets.SONAR_TOKEN }}" || (echo "Missing SONAR_TOKEN secret" && exit 1)
+          test -n "${{ secrets.SONAR_BACKEND_PROJECT_KEY }}" || (echo "Missing SONAR_BACKEND_PROJECT_KEY secret" && exit 1)
+
       - name: Build/Test/Scan backend
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_PROJECT_KEY: ${{ secrets.SONAR_BACKEND_PROJECT_KEY }}
         run: |
           mvn -f stu_backend/pom.xml -B clean verify \
             org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.projectKey=${{ secrets.SONAR_BACKEND_PROJECT_KEY }} \
+            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
             -Dsonar.projectName=stu_backend \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.host.url=${SONAR_HOST_URL} \
+            -Dsonar.login=${SONAR_TOKEN} \
             -Dsonar.qualitygate.wait=true
 
   frontend-sonar:
