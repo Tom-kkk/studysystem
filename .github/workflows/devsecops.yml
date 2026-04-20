@@ -24,6 +24,7 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
+          cache-dependency-path: stu_backend/pom.xml
 
       - name: Build/Test/Scan backend
         run: |
