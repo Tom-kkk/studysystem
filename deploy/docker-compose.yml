@@ -1,0 +1,61 @@
+name: studysystem
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: studysystem-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: ${TZ}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../stu_backend/sql/report.sql:/docker-entrypoint-initdb.d/01-report.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ..
+      dockerfile: ./deploy/backend.Dockerfile
+    container_name: studysystem-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ}
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false&useUnicode=true&characterEncoding=utf8
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
+      APP_MAIL_FROM_DISPLAY_NAME: ${APP_MAIL_FROM_DISPLAY_NAME}
+      APP_MAIL_SUBJECT: ${APP_MAIL_SUBJECT}
+      APP_MAIL_DEADLINE_REMINDER_HOURS: ${APP_MAIL_DEADLINE_REMINDER_HOURS}
+      APP_MAIL_DEADLINE_REMINDER_CRON: ${APP_MAIL_DEADLINE_REMINDER_CRON}
+    expose:
+      - "8080"
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: ./deploy/frontend.Dockerfile
+    container_name: studysystem-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${HTTP_PORT}:80"
+
+volumes:
+  mysql_data:
