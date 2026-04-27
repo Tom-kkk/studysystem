@@ -1,0 +1,56 @@
+# ZAP Automation Framework：JSON 登录 + Session Cookie（与 Spring HttpSession 一致）
+# 占位符由 .github/zap/render_zap_auth_plan.py 在 CI 中替换为安全转义后的值
+---
+env:
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+  contexts:
+    - name: studysystem
+      urls:
+        - __TARGET__
+      includePaths:
+        - __TARGET_RE_INCL__
+      excludePaths:
+        - __TARGET_RE_EXC_LOGOUT__
+      authentication:
+        method: json
+        parameters:
+          loginPageUrl: __TARGET__/
+          loginRequestUrl: __TARGET__/api/auth/login
+          loginRequestBody: '{"userName":"{%username%}","password":"{%password%}"}'
+        verification:
+          method: response
+          loggedInRegex: '"success"\s*:\s*true'
+      sessionManagement:
+        method: cookie
+        parameters: {}
+      users:
+        - name: scanner
+          credentials:
+            username: __USER_JSON__
+            password: __PASS_JSON__
+
+jobs:
+  - type: spider
+    parameters:
+      context: studysystem
+      user: scanner
+      maxDuration: 5
+      maxChildren: 20
+  - type: spiderClient
+    parameters:
+      context: studysystem
+      user: scanner
+      maxDuration: 3
+      browserId: firefox-headless
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 0
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk
+      reportFile: report_html.html
+      reportTitle: studysystem ZAP (authenticated)
